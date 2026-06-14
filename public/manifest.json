@@ -1,0 +1,18 @@
+{
+  "name": "密码管家 - 本地密码管理工具",
+  "short_name": "密码管家",
+  "description": "安全的本地密码管理工具，数据仅存您的设备",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0f23",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/lock.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

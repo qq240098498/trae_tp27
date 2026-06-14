@@ -1,0 +1,25 @@
+{
+  "name": "local-password-manager",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "本地密码管理工具 - 数据仅存用户设备，不上传云端",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "idb": "^7.1.1",
+    "lucide-react": "^0.294.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}
