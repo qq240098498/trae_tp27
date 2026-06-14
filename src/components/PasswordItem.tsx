@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { PasswordEntry, CATEGORIES } from '../types'
-import { Eye, EyeOff, Copy, Edit2, Trash2, Globe, User, ShieldAlert, ShieldCheck, Shield, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, Copy, Edit2, Trash2, Globe, User, ShieldAlert, ShieldCheck, Shield, AlertTriangle, Calendar, Clock } from 'lucide-react'
 import { analyzePasswordStrength, findReusedPasswords, StrengthLevel } from '../utils/passwordStrength'
+import { getExpiryStatus, getDaysUntilExpiry, formatExpiryDate, formatLastChangedDate } from '../utils/passwordExpiry'
+import { useApp } from '../store/AppContext'
 
 interface PasswordItemProps {
   entry: PasswordEntry
@@ -36,6 +38,7 @@ function StrengthBadge({ level }: { level: StrengthLevel }) {
 }
 
 export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: PasswordItemProps) {
+  const { settings } = useApp()
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -45,6 +48,14 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
   const reusedPasswords = findReusedPasswords(allEntries)
   const reuseInfo = reusedPasswords.find(r => r.password === entry.password)
   const isReused = reuseInfo && reuseInfo.count >= 2
+
+  const expiryStatus = useMemo(() => {
+    return getExpiryStatus(entry, settings.expiryReminderDays)
+  }, [entry, settings.expiryReminderDays])
+
+  const daysUntilExpiry = useMemo(() => {
+    return getDaysUntilExpiry(entry)
+  }, [entry])
 
   const copyPassword = async () => {
     await navigator.clipboard.writeText(entry.password)
@@ -57,9 +68,9 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
   }
 
   return (
-    <div className={`password-card ${strengthResult.level === 'weak' ? 'password-card-weak' : ''} ${isReused ? 'password-card-reused' : ''}`}>
+    <div className={`password-card ${strengthResult.level === 'weak' ? 'password-card-weak' : ''} ${isReused ? 'password-card-reused' : ''} ${expiryStatus === 'expired' ? 'password-card-expired' : ''} ${expiryStatus === 'expiring-soon' ? 'password-card-expiring' : ''}`}>
       <div className="password-card-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
           <div
             className="category-badge"
             style={{ backgroundColor: category?.color + '20', color: category?.color }}
@@ -67,6 +78,18 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
             {category?.name}
           </div>
           <StrengthBadge level={strengthResult.level} />
+          {expiryStatus === 'expired' && (
+            <span className="expiry-badge expiry-badge-expired">
+              <Calendar size={10} />
+              已过期
+            </span>
+          )}
+          {expiryStatus === 'expiring-soon' && (
+            <span className="expiry-badge expiry-badge-soon">
+              <Clock size={10} />
+              {daysUntilExpiry}天后过期
+            </span>
+          )}
         </div>
         <div className="card-actions">
           <button className="icon-btn-sm" onClick={onEdit}>
@@ -109,7 +132,29 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
         </button>
       </div>
 
-      {strengthResult.level === 'weak' && strengthResult.reasons.length > 0 && (
+      {expiryStatus === 'expired' && (
+        <div className="password-warning expiry-warning expired-warning">
+          <AlertTriangle size={14} />
+          <div className="warning-content">
+            <span className="warning-title">密码已过期 — 请立即修改</span>
+            <span className="warning-reasons">为了账户安全，建议尽快更换新密码</span>
+          </div>
+          <button className="warning-action-btn" onClick={onEdit}>修改</button>
+        </div>
+      )}
+
+      {expiryStatus === 'expiring-soon' && (
+        <div className="password-warning expiry-warning expiring-soon-warning">
+          <Clock size={14} />
+          <div className="warning-content">
+            <span className="warning-title">该改密码了 — {daysUntilExpiry}天后过期</span>
+            <span className="warning-reasons">到期日：{formatExpiryDate(entry)}</span>
+          </div>
+          <button className="warning-action-btn" onClick={onEdit}>修改</button>
+        </div>
+      )}
+
+      {strengthResult.level === 'weak' && strengthResult.reasons.length > 0 && expiryStatus !== 'expired' && expiryStatus !== 'expiring-soon' && (
         <div className="password-warning weak-warning">
           <ShieldAlert size={14} />
           <div className="warning-content">
@@ -120,7 +165,7 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
         </div>
       )}
 
-      {isReused && strengthResult.level !== 'weak' && (
+      {isReused && strengthResult.level !== 'weak' && expiryStatus !== 'expired' && expiryStatus !== 'expiring-soon' && (
         <div className="password-warning reuse-warning">
           <AlertTriangle size={14} />
           <div className="warning-content">
@@ -130,6 +175,19 @@ export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: Pa
             </span>
           </div>
           <button className="warning-action-btn" onClick={onEdit}>修改</button>
+        </div>
+      )}
+
+      {entry.expiryDays > 0 && (
+        <div className="entry-meta">
+          <span className="meta-item">
+            <Calendar size={12} />
+            上次修改：{formatLastChangedDate(entry)}
+          </span>
+          <span className="meta-item">
+            <Clock size={12} />
+            过期周期：每 {entry.expiryDays} 天
+          </span>
         </div>
       )}
 
