@@ -6,8 +6,9 @@ import PasswordForm from './PasswordForm'
 import PasswordGenerator from './PasswordGenerator'
 import CategoryFilter from './CategoryFilter'
 import SearchBar from './SearchBar'
-import { Plus, LogOut, Settings, Download, Upload, KeyRound, X } from 'lucide-react'
+import { Plus, LogOut, Settings, Download, Upload, KeyRound, X, ShieldAlert, ShieldCheck, AlertTriangle } from 'lucide-react'
 import { exportDataAsJSON, importDataFromJSON } from '../utils/storage'
+import { performSecurityAudit } from '../utils/passwordStrength'
 
 export default function PasswordList() {
   const { entries, lock, addEntry, updateEntry, deleteEntry } = useApp()
@@ -17,6 +18,7 @@ export default function PasswordList() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [showGenerator, setShowGenerator] = useState(false)
+  const [showSecurityAudit, setShowSecurityAudit] = useState(false)
 
   const filteredEntries = useMemo(() => {
     return entries.filter(entry => {
@@ -35,6 +37,10 @@ export default function PasswordList() {
       counts[cat.id] = entries.filter(e => e.category === cat.id).length
     })
     return counts
+  }, [entries])
+
+  const securityAudit = useMemo(() => {
+    return performSecurityAudit(entries)
   }, [entries])
 
   const handleAdd = () => {
@@ -86,6 +92,10 @@ export default function PasswordList() {
 
   const editingEntry = editingId ? entries.find(e => e.id === editingId) : null
 
+  const securityScore = entries.length > 0
+    ? Math.round((securityAudit.safeCount / securityAudit.totalEntries) * 100)
+    : 100
+
   return (
     <div className="app-layout">
       <header className="app-header">
@@ -93,6 +103,16 @@ export default function PasswordList() {
           <h1 className="app-title">密码管家</h1>
         </div>
         <div className="header-right">
+          <button
+            className={`icon-btn ${securityAudit.weakCount > 0 || securityAudit.reusedPasswords.length > 0 ? 'icon-btn-security-alert' : ''}`}
+            onClick={() => setShowSecurityAudit(true)}
+            title="安全检测"
+          >
+            {securityAudit.weakCount > 0 || securityAudit.reusedPasswords.length > 0
+              ? <ShieldAlert size={20} />
+              : <ShieldCheck size={20} />
+            }
+          </button>
           <button className="icon-btn" onClick={() => setShowGenerator(true)} title="密码生成器">
             <KeyRound size={20} />
           </button>
@@ -113,6 +133,18 @@ export default function PasswordList() {
 
       <div className="app-content">
         <SearchBar value={searchQuery} onChange={setSearchQuery} />
+
+        {(securityAudit.weakCount > 0 || securityAudit.reusedPasswords.length > 0) && (
+          <div className="security-summary-bar" onClick={() => setShowSecurityAudit(true)}>
+            <ShieldAlert size={16} />
+            <span>
+              {securityAudit.weakCount > 0 && `${securityAudit.weakCount}个弱密码`}
+              {securityAudit.weakCount > 0 && securityAudit.reusedPasswords.length > 0 && '，'}
+              {securityAudit.reusedPasswords.length > 0 && `${securityAudit.reusedPasswords.length}组重复密码`}
+            </span>
+            <span className="security-summary-action">查看详情 →</span>
+          </div>
+        )}
 
         <CategoryFilter
           selected={selectedCategory}
@@ -138,6 +170,7 @@ export default function PasswordList() {
               <PasswordItem
                 key={entry.id}
                 entry={entry}
+                allEntries={entries}
                 onEdit={() => handleEdit(entry.id)}
                 onDelete={() => {
                   if (confirm('确定要删除这条密码吗？')) {
@@ -180,6 +213,119 @@ export default function PasswordList() {
             </div>
             <div className="modal-form">
               <PasswordGenerator standalone onClose={() => setShowGenerator(false)} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSecurityAudit && (
+        <div className="modal-overlay" onClick={() => setShowSecurityAudit(false)}>
+          <div className="modal-content security-audit-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>安全检测</h2>
+              <button className="icon-btn" onClick={() => setShowSecurityAudit(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-form">
+              <div className="security-score-section">
+                <div className="security-score-ring">
+                  <svg viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" strokeWidth="8" />
+                    <circle
+                      cx="50" cy="50" r="42" fill="none"
+                      stroke={securityScore >= 80 ? 'var(--success)' : securityScore >= 50 ? 'var(--warning)' : 'var(--danger)'}
+                      strokeWidth="8"
+                      strokeDasharray={`${securityScore * 2.64} 264`}
+                      strokeDashoffset="0"
+                      strokeLinecap="round"
+                      transform="rotate(-90 50 50)"
+                      className="security-score-circle"
+                    />
+                  </svg>
+                  <div className="security-score-text">
+                    <span className="security-score-number">{securityScore}</span>
+                    <span className="security-score-label">安全分</span>
+                  </div>
+                </div>
+                <div className="security-stats">
+                  <div className="security-stat">
+                    <span className="stat-number stat-total">{securityAudit.totalEntries}</span>
+                    <span className="stat-label">总密码数</span>
+                  </div>
+                  <div className="security-stat">
+                    <span className="stat-number stat-safe">{securityAudit.safeCount}</span>
+                    <span className="stat-label">安全</span>
+                  </div>
+                  <div className="security-stat">
+                    <span className="stat-number stat-weak">{securityAudit.weakCount}</span>
+                    <span className="stat-label">弱密码</span>
+                  </div>
+                  <div className="security-stat">
+                    <span className="stat-number stat-reused">{securityAudit.reusedPasswords.length}</span>
+                    <span className="stat-label">重复组</span>
+                  </div>
+                </div>
+              </div>
+
+              {securityAudit.weakEntries.length > 0 && (
+                <div className="audit-section">
+                  <h3 className="audit-section-title">
+                    <ShieldAlert size={16} />
+                    需要关注的密码
+                  </h3>
+                  <div className="audit-list">
+                    {securityAudit.weakEntries.map(({ entry, result }) => (
+                      <div key={entry.id} className="audit-item">
+                        <div className="audit-item-info">
+                          <span className="audit-item-title">{entry.title}</span>
+                          <span className="audit-item-reasons">{result.reasons.join('、')}</span>
+                        </div>
+                        <button
+                          className="audit-item-action"
+                          onClick={() => {
+                            setShowSecurityAudit(false)
+                            handleEdit(entry.id)
+                          }}
+                        >
+                          修改
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {securityAudit.reusedPasswords.length > 0 && (
+                <div className="audit-section">
+                  <h3 className="audit-section-title">
+                    <AlertTriangle size={16} />
+                    重复使用的密码
+                  </h3>
+                  <div className="audit-list">
+                    {securityAudit.reusedPasswords.map((reuse, idx) => (
+                      <div key={idx} className="audit-item">
+                        <div className="audit-item-info">
+                          <span className="audit-item-title">
+                            该密码已用于{reuse.count}个网站
+                          </span>
+                          <span className="audit-item-reasons">
+                            {reuse.entries.map(e => e.title).join('、')}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {securityAudit.weakCount === 0 && securityAudit.reusedPasswords.length === 0 && (
+                <div className="audit-all-safe">
+                  <ShieldCheck size={48} />
+                  <p>所有密码均安全</p>
+                  <span>没有发现弱密码或重复使用的密码</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

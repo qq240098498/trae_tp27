@@ -1,18 +1,50 @@
 import { useState } from 'react'
 import { PasswordEntry, CATEGORIES } from '../types'
-import { Eye, EyeOff, Copy, Edit2, Trash2, Globe, User } from 'lucide-react'
+import { Eye, EyeOff, Copy, Edit2, Trash2, Globe, User, ShieldAlert, ShieldCheck, Shield, AlertTriangle } from 'lucide-react'
+import { analyzePasswordStrength, findReusedPasswords, StrengthLevel } from '../utils/passwordStrength'
 
 interface PasswordItemProps {
   entry: PasswordEntry
+  allEntries: PasswordEntry[]
   onEdit: () => void
   onDelete: () => void
 }
 
-export default function PasswordItem({ entry, onEdit, onDelete }: PasswordItemProps) {
+function StrengthBadge({ level }: { level: StrengthLevel }) {
+  if (level === 'strong') {
+    return (
+      <span className="strength-badge strength-badge-strong">
+        <ShieldCheck size={12} />
+        强
+      </span>
+    )
+  }
+  if (level === 'medium') {
+    return (
+      <span className="strength-badge strength-badge-medium">
+        <Shield size={12} />
+        中
+      </span>
+    )
+  }
+  return (
+    <span className="strength-badge strength-badge-weak">
+      <ShieldAlert size={12} />
+      弱
+    </span>
+  )
+}
+
+export default function PasswordItem({ entry, allEntries, onEdit, onDelete }: PasswordItemProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const category = CATEGORIES.find(c => c.id === entry.category)
+
+  const strengthResult = analyzePasswordStrength(entry.password)
+  const reusedPasswords = findReusedPasswords(allEntries)
+  const reuseInfo = reusedPasswords.find(r => r.password === entry.password)
+  const isReused = reuseInfo && reuseInfo.count >= 2
 
   const copyPassword = async () => {
     await navigator.clipboard.writeText(entry.password)
@@ -25,13 +57,16 @@ export default function PasswordItem({ entry, onEdit, onDelete }: PasswordItemPr
   }
 
   return (
-    <div className="password-card">
+    <div className={`password-card ${strengthResult.level === 'weak' ? 'password-card-weak' : ''} ${isReused ? 'password-card-reused' : ''}`}>
       <div className="password-card-header">
-        <div
-          className="category-badge"
-          style={{ backgroundColor: category?.color + '20', color: category?.color }}
-        >
-          {category?.name}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div
+            className="category-badge"
+            style={{ backgroundColor: category?.color + '20', color: category?.color }}
+          >
+            {category?.name}
+          </div>
+          <StrengthBadge level={strengthResult.level} />
         </div>
         <div className="card-actions">
           <button className="icon-btn-sm" onClick={onEdit}>
@@ -73,6 +108,30 @@ export default function PasswordItem({ entry, onEdit, onDelete }: PasswordItemPr
           <Copy size={16} />
         </button>
       </div>
+
+      {strengthResult.level === 'weak' && strengthResult.reasons.length > 0 && (
+        <div className="password-warning weak-warning">
+          <ShieldAlert size={14} />
+          <div className="warning-content">
+            <span className="warning-title">弱密码 — 建议修改</span>
+            <span className="warning-reasons">{strengthResult.reasons.join('、')}</span>
+          </div>
+          <button className="warning-action-btn" onClick={onEdit}>修改</button>
+        </div>
+      )}
+
+      {isReused && strengthResult.level !== 'weak' && (
+        <div className="password-warning reuse-warning">
+          <AlertTriangle size={14} />
+          <div className="warning-content">
+            <span className="warning-title">密码重复使用</span>
+            <span className="warning-reasons">
+              该密码已用于{reuseInfo!.count}个网站，建议区分
+            </span>
+          </div>
+          <button className="warning-action-btn" onClick={onEdit}>修改</button>
+        </div>
+      )}
 
       {entry.url && (
         <div className="entry-field">
