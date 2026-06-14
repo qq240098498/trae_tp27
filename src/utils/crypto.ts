@@ -108,23 +108,51 @@ export function generatePassword(
     lowercase?: boolean
     numbers?: boolean
     symbols?: boolean
+    easyRead?: boolean
   } = {}
 ): string {
   const {
     uppercase = true,
     lowercase = true,
     numbers = true,
-    symbols = true
+    symbols = true,
+    easyRead = false
   } = options
 
+  let uppercaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  let lowercaseChars = 'abcdefghijklmnopqrstuvwxyz'
+  let numbersChars = '0123456789'
+  let symbolsChars = '!@#$%^&*()_-+=<>?/[]{}|'
+
+  if (easyRead) {
+    uppercaseChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
+    lowercaseChars = 'abcdefghjkmnpqrstuvwxyz'
+    numbersChars = '23456789'
+    symbolsChars = '!@#$%^&*_+-=?/'
+  }
+
   let chars = ''
-  if (uppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  if (lowercase) chars += 'abcdefghijklmnopqrstuvwxyz'
-  if (numbers) chars += '0123456789'
-  if (symbols) chars += '!@#$%^&*()_-+=<>?/[]{}|'
+  let requiredChars = ''
+
+  if (uppercase) {
+    chars += uppercaseChars
+    requiredChars += uppercaseChars[Math.floor(Math.random() * uppercaseChars.length)]
+  }
+  if (lowercase) {
+    chars += lowercaseChars
+    requiredChars += lowercaseChars[Math.floor(Math.random() * lowercaseChars.length)]
+  }
+  if (numbers) {
+    chars += numbersChars
+    requiredChars += numbersChars[Math.floor(Math.random() * numbersChars.length)]
+  }
+  if (symbols) {
+    chars += symbolsChars
+    requiredChars += symbolsChars[Math.floor(Math.random() * symbolsChars.length)]
+  }
 
   if (chars.length === 0) {
-    chars = 'abcdefghijklmnopqrstuvwxyz'
+    chars = lowercaseChars
   }
 
   const array = new Uint32Array(length)
@@ -133,6 +161,25 @@ export function generatePassword(
   let password = ''
   for (let i = 0; i < length; i++) {
     password += chars[array[i] % chars.length]
+  }
+
+  if (requiredChars.length > 0 && length >= requiredChars.length) {
+    const passwordArray = password.split('')
+    const requiredArray = requiredChars.split('')
+    const positions: number[] = []
+
+    while (positions.length < requiredArray.length) {
+      const pos = Math.floor(Math.random() * length)
+      if (!positions.includes(pos)) {
+        positions.push(pos)
+      }
+    }
+
+    for (let i = 0; i < requiredArray.length; i++) {
+      passwordArray[positions[i]] = requiredArray[i]
+    }
+
+    password = passwordArray.join('')
   }
 
   return password

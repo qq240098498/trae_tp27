@@ -3,9 +3,10 @@ import { useApp } from '../store/AppContext'
 import { CATEGORIES, CategoryType } from '../types'
 import PasswordItem from './PasswordItem'
 import PasswordForm from './PasswordForm'
+import PasswordGenerator from './PasswordGenerator'
 import CategoryFilter from './CategoryFilter'
 import SearchBar from './SearchBar'
-import { Plus, LogOut, Settings, Download, Upload } from 'lucide-react'
+import { Plus, LogOut, Settings, Download, Upload, KeyRound, X } from 'lucide-react'
 import { exportDataAsJSON, importDataFromJSON } from '../utils/storage'
 
 export default function PasswordList() {
@@ -15,6 +16,7 @@ export default function PasswordList() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
+  const [showGenerator, setShowGenerator] = useState(false)
 
   const filteredEntries = useMemo(() => {
     return entries.filter(entry => {
@@ -91,6 +93,9 @@ export default function PasswordList() {
           <h1 className="app-title">密码管家</h1>
         </div>
         <div className="header-right">
+          <button className="icon-btn" onClick={() => setShowGenerator(true)} title="密码生成器">
+            <KeyRound size={20} />
+          </button>
           <button className="icon-btn" onClick={handleExport} title="导出数据">
             <Download size={20} />
           </button>
@@ -162,6 +167,22 @@ export default function PasswordList() {
             handleCloseForm()
           }}
         />
+      )}
+
+      {showGenerator && (
+        <div className="modal-overlay" onClick={() => setShowGenerator(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>密码生成器</h2>
+              <button className="icon-btn" onClick={() => setShowGenerator(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-form">
+              <PasswordGenerator standalone onClose={() => setShowGenerator(false)} />
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

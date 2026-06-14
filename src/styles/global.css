@@ -867,6 +867,97 @@ select {
   cursor: pointer;
 }
 
+.copy-success {
+  text-align: center;
+  color: var(--success);
+  font-size: 13px;
+  padding: 6px;
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: var(--radius-sm);
+  animation: fadeIn 0.2s ease;
+}
+
+.password-info-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.password-length-info {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--bg-input);
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+
+.option-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.option-value {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-input);
+  padding: 2px 10px;
+  border-radius: 8px;
+  min-width: 36px;
+  text-align: center;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: -4px;
+}
+
+.easy-read-option {
+  margin-top: 4px;
+}
+
+.easy-read-label {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  padding: 12px !important;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1)) !important;
+  border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.easy-read-label input[type="checkbox"] {
+  margin-top: 2px;
+}
+
+.easy-read-label > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.easy-read-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.easy-read-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.password-generator-standalone {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
 .modal-actions {
   display: flex;
   gap: 12px;
