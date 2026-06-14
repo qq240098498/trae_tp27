@@ -4,6 +4,36 @@ import { encryptData, decryptData, generateId, hashPassword } from '../utils/cry
 import { saveEncryptedData, getEncryptedData, hasStoredData } from '../utils/storage'
 import { addPasswordToHistory, isPasswordInLastN } from '../utils/passwordExpiry'
 
+function migrateEntry(entry: Partial<PasswordEntry>, now: number, defaultExpiryDays: number): PasswordEntry {
+  return {
+    id: entry.id || generateId(),
+    title: entry.title || '',
+    category: entry.category || 'other',
+    username: entry.username || '',
+    password: entry.password || '',
+    url: entry.url,
+    notes: entry.notes,
+    createdAt: entry.createdAt || now,
+    updatedAt: entry.updatedAt || now,
+    passwordHistory: entry.passwordHistory || [],
+    expiryDays: entry.expiryDays !== undefined ? entry.expiryDays : defaultExpiryDays,
+    lastPasswordChangeAt: entry.lastPasswordChangeAt || entry.createdAt || now
+  }
+}
+
+async function migrateEntries(entries: Partial<PasswordEntry>[], defaultExpiryDays: number): Promise<PasswordEntry[]> {
+  const now = Date.now()
+  const migrated: PasswordEntry[] = []
+  for (const entry of entries) {
+    const migratedEntry = migrateEntry(entry, now, defaultExpiryDays)
+    if (migratedEntry.passwordHistory.length === 0 && migratedEntry.password) {
+      migratedEntry.passwordHistory = await addPasswordToHistory(migratedEntry.password, [])
+    }
+    migrated.push(migratedEntry)
+  }
+  return migrated
+}
+
 interface AppContextType {
   isInitialized: boolean
   isUnlocked: boolean
@@ -57,10 +87,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const encrypted = await getEncryptedData()
     if (!encrypted) throw new Error('没有找到数据')
 
-    const data = await decryptData(encrypted, password) as { entries: PasswordEntry[]; settings?: AppSettings }
+    const data = await decryptData(encrypted, password) as { entries: Partial<PasswordEntry>[]; settings?: AppSettings }
+    const mergedSettings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) }
+    const migratedEntries = await migrateEntries(data.entries || [], mergedSettings.defaultExpiryDays)
     setMasterPasswordState(password)
-    setEntries(data.entries || [])
-    setSettings(data.settings || DEFAULT_SETTINGS)
+    setEntries(migratedEntries)
+    setSettings(mergedSettings)
     setIsUnlocked(true)
   }, [])
 
